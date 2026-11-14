@@ -21,10 +21,6 @@ impl Compiler {
         Self { context: Context::create(), current_temp: 0 }
     }
 
-    fn compile_error(message: &str) -> KovaError {
-        KovaError::CompileError { message }
-    }
-
     pub fn fresh_temp(&mut self) -> String {
         self.current_temp += 1;
         format!("t{}", self.current_temp)
@@ -34,9 +30,9 @@ impl Compiler {
         (self.context.create_module(name), self.context.create_builder())
     }
 
-    unsafe fn emit_binary_expr<'ctx>(&mut self, module: &Module, builder: &Builder, left: &Box<Expr>, operator: &Token, right: &Box<Expr>) -> anyhow::Result<IntValue<'ctx>> {
-        let lhs = self.emit_expr(module, builder, left);
-        let rhs = self.emit_expr(module, builder, right);
+    unsafe fn emit_binary_expr<'ctx>(&mut self, module: &Module, builder: &Builder, left: &Box<Expr>, operator: &Token, right: &Box<Expr>) -> Result<IntValue<'ctx>> {
+        let lhs = self.emit_expr(module, builder, left)?;
+        let rhs = self.emit_expr(module, builder, right)?;
         let result = match operator.kind {
             TokenKind::Plus => builder.build_int_add(lhs, rhs, &*self.fresh_temp())?,
             TokenKind::Minus => builder.build_int_sub(lhs, rhs, &*self.fresh_temp())?,
@@ -48,33 +44,35 @@ impl Compiler {
         Ok(result)
     }
 
-    unsafe fn emit_expr(&mut self, module: &Module, builder: &Builder, expr: &Expr) -> Result<> {
+    unsafe fn emit_expr<'ctx>(&mut self, module: &Module, builder: &Builder, expr: &Expr) -> Result<IntValue<'ctx>> {
         Ok(match expr {
             Expr::Binary { left, operator, right } => self.emit_binary_expr(module, builder, left, operator, right)?,
-            _ => {}
+            _ => return Err(KovaError::CompileError { message: "unsupported expression kind".into() }.into()),
         })
     }
 
-    unsafe fn emit_let(&mut self, module: &Module, builder: &Builder, name: &Token, value: &Expr) -> Result<> {
+    unsafe fn emit_let<'ctx>(&mut self, module: &Module, builder: &Builder, name: &Token, value: &Expr) -> Result<IntValue<'ctx>> {
         let value_ptr = self.emit_expr(module, builder, value)?;
-        builder.build_alloca()
+        let alloca = builder.build_alloca(self.context.i64_type(), &*name.lexeme)?;
+        builder.build_store(alloca, value_ptr)?;
+        Ok(value_ptr)
     }
 
-    unsafe fn emit_stmt(&mut self, module: &Module, builder: &Builder, stmt: Stmt) -> Result<()> {
+    unsafe fn emit_stmt<'ctx>(&mut self, module: &Module, builder: &Builder, stmt: Stmt) -> Result<IntValue<'ctx>> {
         Ok(match &stmt {
             Stmt::Let { name, value } => self.emit_let(module, builder, name, value)?,
-            Stmt::Assign { name, value } => self.emit_assign(stmt)?;
-            Stmt::Call { name, params } => self.emit_call(name, params)?;
+            _ => return Err(KovaError::CompileError { message: "unsupported stmt kind".into() }.into())
+            // Stmt::Assign { name, value } => self.emit_assign(stmt)?;
+            // Stmt::Call { name, params } => self.emit_call(name, params)?;
         })
     }
 
-    pub unsafe fn emit(&self, ast: Vec<Stmt>) -> Result<()> {
+    pub unsafe fn emit(&mut self, ast: Vec<Stmt>) -> Result<()> {
         let (module, builder) = self.setup("kova-test");
-        let ir = String::new();
         for stmt in ast {
             self.emit_stmt(&module, &builder, stmt)?;
         }
-        println!("{}", ir);
+        println!("{}", module.print_to_string().to_string());
         Ok(())
     }
 }
