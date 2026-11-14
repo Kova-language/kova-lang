@@ -8,8 +8,10 @@ pub enum Literal {
 pub enum TokenKind {
     LeftParen, RightParen,
 
-    Plus, Minus, Div,
-    Mult,
+    Plus, Minus, Mult, Div,
+    Equals,
+    
+    Identifier,
 
     Number, String,
 }
