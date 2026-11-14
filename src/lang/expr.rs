@@ -1,6 +1,7 @@
 #[derive(Clone, Copy)]
 pub enum Literal {
-    Number(f64),
+    Integer(i64),
+    Float(f64),
 }
 
 #[derive(Clone)]
@@ -9,6 +10,8 @@ pub enum TokenKind {
 
     Plus, Minus, Div,
     Mult,
+
+    Number, String,
 }
 
 #[derive(Clone)]
