@@ -1,10 +1,10 @@
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Literal {
     Integer(i64),
-    Float(f64),
+    // Float(f64),
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum TokenKind {
     LeftParen, RightParen,
 
@@ -16,7 +16,7 @@ pub enum TokenKind {
     Number, String,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Token {
     pub lexeme: String,
     pub kind: TokenKind,
