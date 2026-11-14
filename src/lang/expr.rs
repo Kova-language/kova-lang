@@ -14,7 +14,7 @@ pub enum TokenKind {
 #[derive(Clone)]
 pub struct Token {
     lexeme: String,
-    kind: TokenKind,
+    pub(crate) kind: TokenKind,
     literal: Option<Literal>
 }
 
